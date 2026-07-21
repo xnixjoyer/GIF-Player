@@ -44,7 +44,7 @@ python3Packages.buildPythonApplication {
   checkPhase = ''
     runHook preCheck
     python -m compileall -q .
-    PYTHONPATH=. python -m unittest discover -s tests -v
+    PYTHONPATH=".''${PYTHONPATH:+:$PYTHONPATH}" python -m unittest discover -s tests -v
     python - <<'PY'
     import cairo
     import gi
