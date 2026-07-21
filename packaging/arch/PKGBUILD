@@ -5,7 +5,7 @@ pkgrel=1
 pkgdesc='GTK3 layer-shell GIF overlay supervisor for Wayland'
 arch=('x86_64' 'aarch64')
 url='https://github.com/xnixjoyer/GIF-Player'
-license=('custom:unknown')
+license=('GPL-3.0-or-later')
 depends=(
   'python'
   'python-gobject'
