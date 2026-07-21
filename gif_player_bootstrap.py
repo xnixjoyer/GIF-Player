@@ -13,17 +13,13 @@ from gif_player_paths import AppPaths
 
 
 def _libexec_dir() -> Path:
-    """Locate the immutable implementation files without relying on PATH or cwd."""
     override = os.environ.get("GIF_PLAYER_LIBEXEC_DIR")
     if override:
         return Path(override).expanduser().resolve()
-
     beside_module = Path(__file__).resolve().parent
     if (beside_module / "gif-script.py").is_file():
         return beside_module
-
-    installed = Path(sysconfig.get_path("data")) / "libexec" / "gif-player"
-    return installed
+    return Path(sysconfig.get_path("data")) / "libexec" / "gif-player"
 
 
 LIBEXEC_DIR = _libexec_dir()
@@ -54,6 +50,18 @@ def load_legacy(filename: str, module_name: str) -> ModuleType:
             f"{exc}"
         ) from exc
     return module
+
+
+def validate_graphics(module: ModuleType) -> None:
+    initialized = module.Gtk.init_check(None)
+    ok = initialized[0] if isinstance(initialized, tuple) else bool(initialized)
+    if not ok:
+        raise RuntimeError("GTK konnte die aktuelle Wayland-Anzeige nicht initialisieren.")
+    supported = getattr(module.GtkLayerShell, "is_supported", None)
+    if callable(supported) and not supported():
+        raise RuntimeError(
+            "Der aktive Wayland-Compositor unterstützt das Layer-Shell-Protokoll nicht."
+        )
 
 
 def configure_main(module: ModuleType, paths: AppPaths) -> None:
