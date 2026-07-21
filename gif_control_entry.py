@@ -8,7 +8,7 @@ import os
 import subprocess
 import sys
 
-from gif_player_bootstrap import LIBEXEC_DIR, configure_control, load_legacy, require_wayland
+from gif_player_bootstrap import configure_control, load_legacy, picker_command, require_wayland
 from gif_player_paths import get_paths
 
 
@@ -27,7 +27,7 @@ def main(argv: list[str] | None = None) -> int:
             env = os.environ.copy()
             env["GIF_PLAYER_GIF_DIR"] = str(paths.gif_dir)
             subprocess.Popen(
-                [sys.executable, str(LIBEXEC_DIR / "gif_picker_entry.py")],
+                picker_command(),
                 env=env,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
