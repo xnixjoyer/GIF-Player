@@ -1,130 +1,258 @@
 # GIF Player
 
-GIF Player zeigt animierte GIFs als GTK3-Layer-Shell-Overlays unter Wayland.
-Ein Supervisor-Daemon verwaltet mehrere Fenster, mehrere Instanzen desselben
-GIFs, Profile, Positionen, Dragging, Lock/Edit, Skalierung, Transparenz,
-Geschwindigkeit, Bounce und zufällige Sprünge. GIFs werden mit Pillow dekodiert
-und mit Cairo gerendert; das JSON-basierte Unix-Socket-Protokoll bleibt Version 2.
+GIF Player displays animated GIFs as lightweight desktop overlays on Wayland.
+It uses GTK3 and GtkLayerShell, while one supervisor daemon manages every
+running widget through a JSON Unix-socket protocol.
 
-> **Display:** Benötigt eine Wayland-Sitzung und einen Compositor mit
-> `wlr-layer-shell`-Unterstützung, etwa Niri, Sway, Hyprland oder Wayfire.
-> GTK4 und X11 werden nicht verwendet.
+The player supports multiple instances of the same GIF, saved profiles, free
+positioning, drag and lock modes, scaling, opacity, playback speed, flipping,
+bounce movement and animated jumps. GIF frames are decoded with Pillow and
+rendered through Cairo.
 
-## Architektur
+> **Display requirement:** GIF Player requires a Wayland session and a
+> compositor with layer-shell support, such as Niri, Sway, Hyprland or
+> Wayfire. X11 and GTK4 are not supported.
 
-`gif-player`, `gif-picker` und `gif-control` verwenden dieselbe XDG- und
-Bootstrap-Schicht. Der automatisch gestartete `gif-player daemon` besitzt alle
-GTK3-Fenster. Mehrere Instanzen derselben Datei teilen einen `FrameStore`.
+GIF files are not bundled with the project. Use your own local GIF collection.
 
-Die testbare Player-Logik in `gif_player_runtime.py` ergänzt den bestehenden
-GTK3-Player um Disposal-sichere Frame-Kopien, absolute Frame-Deadlines,
-positionsgleiche Compact/Canvas-Übergänge, freies Offscreen-Dragging und getrennte
-Bounce-Grenzen. Details stehen in [ARCHITECTURE.md](ARCHITECTURE.md) und im
-[Player-Pipeline-Bericht](docs/PLAYER_PIPELINE_ANALYSIS.md).
+## Features
+
+- Graphical GIF picker and live control panel
+- Multiple independent widgets and duplicate GIF instances
+- Move, scale, flip, pause, lock, bounce and jump controls
+- Persistent positions, settings and reusable profiles
+- Smooth frame pacing with shared decoded frames
+- Multi-monitor support and unrestricted off-screen positioning
+- XDG-compliant configuration, cache and runtime paths
+- CLI, desktop entries and Fish shell completions
+- Packages for Nix, Arch Linux and Fedora
 
 ## Installation
+
+### Nix
+
+Install the package into your current profile:
 
 ```console
 nix profile add github:xnixjoyer/GIF-Player
 ```
 
-Direkt ohne Installation:
+Run it directly without installing:
 
 ```console
 nix run github:xnixjoyer/GIF-Player -- --help
 nix run github:xnixjoyer/GIF-Player -- mascot
 ```
 
-In einer NixOS-Flake:
+The flake supports `x86_64-linux` and `aarch64-linux` and provides packages,
+apps, checks and a development shell.
+
+For a NixOS flake, add the input and package:
 
 ```nix
-environment.systemPackages = [
-  inputs.gif-player.packages.${pkgs.system}.default
-];
+{
+  inputs.gif-player.url = "github:xnixjoyer/GIF-Player";
+
+  outputs = { nixpkgs, gif-player, ... }@inputs: {
+    nixosConfigurations.your-host = nixpkgs.lib.nixosSystem {
+      specialArgs = { inherit inputs; };
+      modules = [
+        ({ pkgs, ... }: {
+          environment.systemPackages = [
+            gif-player.packages.${pkgs.system}.default
+          ];
+        })
+      ];
+    };
+  };
+}
 ```
 
-Der Flake unterstützt `x86_64-linux` und `aarch64-linux` und stellt
-`packages`, `apps`, `checks` und eine Development Shell bereit.
+### Arch Linux
 
-## GIF-Verzeichnis
-
-Priorität:
-
-1. `--gif-dir DIR`
-2. `GIF_PLAYER_GIF_DIR`
-3. `$XDG_DATA_HOME/gif-player/gifs` oder `~/.local/share/gif-player/gifs`
-
-Ein bereits vorhandenes `~/Scripts/Gif-Overlay/Gifs` wird als
-Kompatibilitätsfallback erkannt, aber nie erstellt.
+Build the included package recipe:
 
 ```console
-export GIF_PLAYER_GIF_DIR="$HOME/Pictures/Overlays"
-gif-player picker
+git clone https://github.com/xnixjoyer/GIF-Player.git
+cd GIF-Player/packaging/arch
+makepkg --syncdeps --cleanbuild
+sudo pacman -U gif-player-*.pkg.tar.zst
 ```
 
-GIFs dürfen in Unterordnern liegen. Das CLI löst eindeutige Dateistämme ohne
-externes `find` auf:
+### Fedora
+
+Build the included RPM recipe from the repository root:
+
+```console
+sudo dnf install rpm-build python3-devel pyproject-rpm-macros \
+  python3-setuptools python3-wheel desktop-file-utils \
+  python3-gobject python3-cairo python3-pillow gtk3 gtk-layer-shell \
+  gobject-introspection
+
+mkdir -p ~/rpmbuild/{SOURCES,SPECS}
+tar --exclude-vcs --exclude='./dist' --exclude='./build' \
+  --transform 's,^,gif-player-0.3.0/,' \
+  -czf ~/rpmbuild/SOURCES/gif-player-0.3.0.tar.gz .
+cp packaging/fedora/gif-player.spec ~/rpmbuild/SPECS/
+rpmbuild -ba ~/rpmbuild/SPECS/gif-player.spec
+sudo dnf install ~/rpmbuild/RPMS/noarch/gif-player-*.noarch.rpm
+```
+
+More packaging details are available in [PACKAGING.md](PACKAGING.md).
+
+## Quick start
+
+Place one or more GIF files in the default data directory:
+
+```console
+mkdir -p ~/.local/share/gif-player/gifs
+cp ~/Pictures/mascot.gif ~/.local/share/gif-player/gifs/
+```
+
+Open the graphical picker:
+
+```console
+gif-player
+```
+
+Or launch a GIF directly by filename or path:
 
 ```console
 gif-player mascot
-gif-player --gif-dir ~/Pictures/Gifs mascot
-gif-player run ~/Pictures/Gifs/anime/mascot.gif --monitor 1
+gif-player run ~/Pictures/mascot.gif
+gif-player run ~/Pictures/mascot.gif --monitor 1
 ```
 
-Bei mehreren gleichnamigen Dateien meldet das CLI die Mehrdeutigkeit, statt
-eine zufällige Datei zu starten.
+The daemon starts automatically when a GIF is launched. Starting the same GIF
+again creates another instance with its own widget ID.
 
-## Programme und CLI
+## Programs
+
+| Program | Description |
+|---|---|
+| `gif-player` | Main CLI, picker launcher and daemon bootstrap |
+| `gif-picker` | Graphical browser for the configured GIF directory |
+| `gif-control` | Graphical control panel for active widgets |
+| `gif` | Optional Fish function forwarding to `gif-player` |
+
+## Command reference
+
+| Command | Description |
+|---|---|
+| `gif-player` | Open the graphical picker |
+| `gif-player NAME` | Start a GIF by unique filename stem |
+| `gif-player run GIF` | Start a GIF by name or path |
+| `gif-player list` | List active widget IDs |
+| `gif-player picker` | Open the graphical picker |
+| `gif-player control` | Open the live control panel |
+| `gif-player edit` | Unlock all widgets for editing |
+| `gif-player lock` | Lock all widgets and enable click-through |
+| `gif-player ipc ID ACTION` | Send an action to one widget |
+| `gif-player all ACTION` | Send an action to every widget |
+| `gif-player stop-all` | Close every active widget |
+| `gif-player doctor` | Check Python, GTK and typelib dependencies |
+| `gif-player self-test` | Print resolved paths and runtime information |
+
+Run `gif-player --help` for the complete CLI syntax.
+
+### Widget actions
+
+Available actions include:
 
 ```text
-gif-player                         Picker öffnen
-gif-player NAME                    GIF nach Namen starten
-gif-player run GIF [Optionen]      GIF per Name oder Pfad starten
-gif-player ipc ID ACTION [ARGS]    Widget steuern
-gif-player all ACTION [ARGS]       Alle Widgets steuern
-gif-player list                    Laufende IDs anzeigen
-gif-player edit                    Alle entsperren
-gif-player lock                    Alle sperren
-gif-player stop-all | kill-all     Alle Widgets schließen
-gif-player picker                  Picker öffnen
-gif-player control                 Control-Panel öffnen
-gif-player daemon                  Supervisor manuell starten
-gif-player doctor                  Python- und GTK-Abhängigkeiten prüfen
+status lock unlock toggle pause play
+move X Y           move-by DX DY
+scale N            corner POSITION
+opacity N          flip MODE
+speed N            bounce
+stop-bounce        hop
+jump               jump-rate SECONDS
+reset              quit
 ```
 
-Widget-Aktionen: `status`, `lock`, `unlock`, `toggle`, `pause`, `play`,
-`move X Y`, `move-by DX DY`, `scale N`, `corner POS`, `opacity N`, `flip MODE`,
-`speed N`, `bounce`, `stop-bounce`, `hop`, `jump`, `jump-rate SECONDS`, `reset`,
-`quit`.
-
-Beispiele:
+Examples:
 
 ```console
+# Start two independent instances
 gif-player mascot
-gif-player mascot                  # zweite Instanz: mascot-2
+gif-player mascot
+
+# Inspect their generated IDs
+gif-player list
+
+# Control one widget
 gif-player ipc mascot-2 move 300 120
-gif-player ipc mascot scale 1.4
+gif-player ipc mascot-2 scale 1.4
+gif-player ipc mascot-2 opacity 0.8
+gif-player ipc mascot-2 speed 1.25
+gif-player ipc mascot-2 flip horizontal
+gif-player ipc mascot-2 bounce
+
+# Control every widget
+gif-player all pause
+gif-player all play
 gif-player all lock
+
 gif-player stop-all
 ```
 
-## Freies Positionieren außerhalb des Monitors
+## GIF directory and configuration
 
-Im Edit-/Drag-Modus werden manuelle Positionen nicht an Monitorgrenzen geklemmt.
-Negative X/Y-Werte und Werte jenseits der rechten oder unteren Grenze sind
-erlaubt. Ein GIF darf teilweise oder vollständig außerhalb liegen.
+GIF directory priority:
+
+1. `--gif-dir DIR`
+2. `GIF_PLAYER_GIF_DIR`
+3. `$XDG_DATA_HOME/gif-player/gifs`
+4. `~/.local/share/gif-player/gifs` when `XDG_DATA_HOME` is unset
+
+Example with a custom collection:
+
+```console
+export GIF_PLAYER_GIF_DIR="$HOME/Pictures/Gifs"
+gif-player
+```
+
+The directory can also be selected for one command only:
+
+```console
+gif-player --gif-dir ~/Pictures/Gifs mascot
+```
+
+GIFs may be stored in subdirectories. A unique filename stem can be used
+without the `.gif` extension. When several files have the same stem, the CLI
+reports the ambiguity instead of launching an arbitrary file.
+
+An existing legacy directory at `~/Scripts/Gif-Overlay/Gifs` is recognized as
+a compatibility fallback when the XDG GIF directory does not exist. GIF Player
+never creates that legacy path.
+
+## XDG paths
+
+| Data | Default location |
+|---|---|
+| GIF collection | `$XDG_DATA_HOME/gif-player/gifs/` |
+| State | `$XDG_CONFIG_HOME/gif-player/state.json` |
+| Profiles | `$XDG_CONFIG_HOME/gif-player/profiles.json` |
+| Thumbnail cache | `$XDG_CACHE_HOME/gif-player/thumbs/` |
+| Socket, lock and daemon log | `$XDG_RUNTIME_DIR/gif-player/` |
+| Runtime fallback | `/tmp/gif-player-$UID/` |
+
+The runtime directory is private with mode `0700`, and the Unix socket uses at
+most `0600`. User configuration, GIFs, profiles, caches and logs are never
+written into the Nix store or bundled into distribution packages.
+
+## Positioning and recovery
+
+Manual positions are not clamped to monitor boundaries. Negative coordinates
+and positions beyond the right or bottom edge are valid:
 
 ```console
 gif-player ipc mascot move -250 900
 gif-player ipc mascot move 3000 -400
 ```
 
-Ein teilweise außerhalb liegendes Widget behält beim Locken exakt seine
-Position. Dafür bleibt es intern als durchklickbare Canvas-Surface aktiv. Sobald
-es wieder vollständig innerhalb liegt, kann der Player in den kompakten Modus
-zurückkehren.
-
-Wiederherstellung:
+A partially or completely off-screen widget keeps its exact position when it
+is locked. Recover an invisible widget with one of these commands:
 
 ```console
 gif-player ipc mascot corner center
@@ -132,68 +260,41 @@ gif-player ipc mascot reset
 gif-player ipc mascot move 100 100
 ```
 
-Bounce verwendet weiterhin eigene, strikt begrenzte Koordinaten. Bei einem auf
-einer Achse größeren GIF wird diese Achse zentriert und angehalten, während die
-andere Achse weiter bouncen kann.
+## Troubleshooting
 
-## Jump- und Frame-Pacing
+Check installed dependencies and resolved paths:
 
-Der Compact/Canvas-Wechsel vor einem Hop verwendet einen zweiphasigen,
-positionsgleichen Übergang. Der erste Canvas-Frame zeigt denselben GIF-Frame an
-derselben Position und besitzt einen Jump-Offset von exakt null. Es wird kein
-absichtlich transparenter Übergangsframe mehr ausgegeben.
+```console
+gif-player doctor
+gif-player self-test
+```
 
-GIF-Animationen verwenden monotone absolute Deadlines. Wenn der GTK-Main-Loop
-kurz blockiert war, werden überfällige Zeitabschnitte berücksichtigt, aber nur
-das neueste fällige Frame gezeichnet. Dadurch entstehen keine schnellen
-Catch-up-Bursts alter Frames.
+Read the daemon log:
 
-## Timing-Diagnose
+```console
+cat "$XDG_RUNTIME_DIR/gif-player/daemon.log"
+```
 
-Detaillierte Logs sind standardmäßig aus. Zum Reproduzieren eines visuellen
-Problems den Daemon zuerst beenden und mit Diagnose neu starten:
+Common problems:
+
+- `WAYLAND_DISPLAY is not set`: run GIF Player inside a graphical Wayland session.
+- No overlay appears: verify that the compositor supports layer-shell.
+- A GIF cannot be found: check the resolved `gif_dir` with `gif-player self-test`.
+- The picker cannot reach the daemon: inspect `daemon.log` for the startup error.
+- A widget is invisible: use `corner center`, `reset` or an explicit position.
+- After updating the package: run `gif-player stop-all` before starting it again.
+
+Detailed timing diagnostics can be enabled manually:
 
 ```console
 gif-player stop-all
 GIF_PLAYER_DEBUG_TIMING=1 gif-player daemon
 ```
 
-Danach in einem zweiten Terminal Picker, Hop oder Bounce ausführen. Das Log liegt
-unter:
+This records frame deadlines, surface transitions, jump progress, draw events
+and frame catch-up behavior in the daemon log.
 
-```console
-cat "$XDG_RUNTIME_DIR/gif-player/daemon.log"
-```
-
-Es enthält monotone JSON-Ereignisse für Surface-Übergänge, `size-allocate`,
-Jump-Fortschritt, Frame-Deadlines, ausgelassene Catch-up-Draws, Damage und Draws.
-
-## Fish
-
-Das Paket installiert `share/fish/vendor_functions.d/gif.fish` und
-Completions. Die Funktion enthält keine Installationspfade:
-
-```fish
-function gif
-    command gif-player $argv
-end
-```
-
-## XDG-Speicherorte
-
-| Inhalt | Standard |
-|---|---|
-| Socket `daemon.sock` | `$XDG_RUNTIME_DIR/gif-player/` |
-| Daemon-Lock und `daemon.log` | `$XDG_RUNTIME_DIR/gif-player/` |
-| Fallback Runtime | `/tmp/gif-player-$UID/` |
-| `state.json`, `profiles.json` | `$XDG_CONFIG_HOME/gif-player/` |
-| Thumbnail-Cache | `$XDG_CACHE_HOME/gif-player/thumbs/` |
-| GIFs | `$XDG_DATA_HOME/gif-player/gifs/` |
-
-Runtime wird privat mit Modus `0700` erstellt; der Socket verwendet höchstens
-`0600`. Es wird nie in den Nix Store geschrieben.
-
-## Entwicklung und Checks
+## Development
 
 ```console
 nix develop
@@ -204,56 +305,22 @@ nixfmt flake.nix nix/package.nix
 nix flake check
 nix build .#gif-player
 ./result/bin/gif-player --help
-nix run .#gif-player -- --help
 ```
 
-Die automatischen Checks prüfen Python-Syntax, `gi`, Cairo und Pillow, die
-Typelibs `Gtk 3.0`, `Gdk 3.0`, `GdkPixbuf 2.0` und `GtkLayerShell 0.1`,
-displayfreie CLI-Hilfe, isolierte XDG-Pfade, Runtime-Modus, Protokoll-v2-
-Roundtrips, GIF-Namensauflösung, Disposal 2/3, lokale Paletten,
-Cairo-Premultiplication, Jump-Kontinuität, freie Positionen, Bounce-Reflexion und
-absolute Frame-Deadlines. Sie öffnen kein echtes Wayland-Fenster.
+The automated checks cover Python syntax, GTK typelibs, isolated XDG paths,
+runtime permissions, protocol-v2 round trips, GIF name resolution, frame
+disposal, Cairo pixel conversion, jump continuity, unrestricted positions,
+bounce reflection and absolute frame deadlines. Display-free checks do not
+open a real Wayland window.
 
-## Fehlerdiagnose
+For implementation details, see [ARCHITECTURE.md](ARCHITECTURE.md) and the
+[player pipeline analysis](docs/PLAYER_PIPELINE_ANALYSIS.md).
 
-- `WAYLAND_DISPLAY ist nicht gesetzt`: Anwendung innerhalb einer grafischen
-  Wayland-Sitzung starten.
-- Kein Overlay trotz laufendem Daemon: Layer-Shell-Unterstützung des
-  Compositors prüfen und das Log unter `$XDG_RUNTIME_DIR/gif-player/daemon.log`
-  lesen.
-- Falsches GIF-Verzeichnis: `gif-player self-test` zeigt die aufgelösten Pfade.
-- Fehlende Python-/GTK-Komponente: `gif-player doctor` prüft Imports und Typelibs.
-- Unsichtbar herausgeschobenes GIF: `corner center`, `reset` oder direkte X/Y-
-  Position verwenden.
-- Nach einem Paketupdate: `gif-player stop-all`; der nächste Start lädt den
-  Daemon aus dem neuen Paket.
+## License
 
-## Manueller Wayland-Smoke-Test
+GIF Player is independently written software licensed under the
+[GNU General Public License v3.0 or later](LICENSE).
 
-- [ ] Picker öffnet sich.
-- [ ] GIF aus dem konfigurierten Verzeichnis startet.
-- [ ] Mehrere Instanzen desselben GIFs funktionieren.
-- [ ] Control-Panel findet alle Instanzen.
-- [ ] Lock und Edit funktionieren.
-- [ ] Dragging bleibt exakt 1:1.
-- [ ] Skalierung, Transparenz und Geschwindigkeit funktionieren.
-- [ ] Manueller und automatischer Jump zeigen keinen leeren Übergangsframe.
-- [ ] Teilweise und vollständig offscreen liegende Positionen bleiben erhalten.
-- [ ] Lock/Edit verändert eine offscreen Position nicht.
-- [ ] `corner center` und `reset` holen ein unsichtbares GIF zurück.
-- [ ] Bounce bleibt innerhalb seiner gültigen Achsen.
-- [ ] Übergroße Bounce-Achsen bleiben ruhig und zentriert.
-- [ ] Profile lassen sich speichern und wiederherstellen.
-- [ ] `gif-player stop-all` beendet alle Widgets.
-- [ ] Der Daemon beendet sich nach dem letzten Widget automatisch.
-- [ ] Nach einem Neustart werden Config und Cache aus den XDG-Pfaden gelesen.
-
-Eine ausführliche 60/120/144-Hz-, Multi-Monitor- und HiDPI-Checkliste steht im
-[Player-Pipeline-Bericht](docs/PLAYER_PIPELINE_ANALYSIS.md).
-
-## Medien und Lizenz
-
-Das Paket bündelt keine GIFs oder anderen Anime-/Medieninhalte. Im Repository
-ist derzeit keine Lizenzdatei vorhanden. Deshalb setzt das Nix-Paket bewusst
-kein `meta.license`. Vor einer Weiterverteilung sollte eine passende Lizenz
-vom Rechteinhaber ergänzt werden.
+The repository does not include GIFs, anime media or other third-party content.
+Files supplied by users remain subject to their respective copyrights and
+licenses.
