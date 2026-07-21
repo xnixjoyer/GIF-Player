@@ -45,7 +45,8 @@ jobs:
       - name: Test packaged CLI
         run: ./result/bin/gif-player --help
 
-      - name: Test remote profile install
+      - name: Test remote flake and profile install
         run: |
+          nix flake metadata "github:${GITHUB_REPOSITORY}/${GITHUB_SHA}" >/dev/null
           nix profile add "github:${GITHUB_REPOSITORY}/${GITHUB_SHA}"
           gif-player --help
