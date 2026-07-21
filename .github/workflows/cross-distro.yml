@@ -48,7 +48,7 @@ jobs:
         run: |
           python -m zipfile -l dist/gif_player-*.whl | tee /tmp/wheel-files
           grep -q 'gif_player_runtime_patch.py' /tmp/wheel-files
-          grep -q 'data/scripts/gif-script.py' /tmp/wheel-files
+          grep -q 'libexec/gif-player/gif-script.py' /tmp/wheel-files
 
   fedora-rpm:
     runs-on: ubuntu-latest
