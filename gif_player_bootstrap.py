@@ -11,6 +11,8 @@ from pathlib import Path
 from types import ModuleType
 
 from gif_player_paths import AppPaths
+from gif_player_runtime_guard import install_transition_guards
+from gif_player_runtime_patch import install_runtime_patches
 
 LIBEXEC_DIR = Path(__file__).resolve().parent
 
@@ -40,6 +42,7 @@ def packaged_executable(name: str) -> Path | None:
     component with the bare Python interpreter would bypass the generated Nix
     wrapper and can lose GTK/GI environment variables. Prefer ``$out/bin``.
     """
+
     package_candidate = LIBEXEC_DIR.parent.parent / "bin" / name
     if package_candidate.is_file() and os.access(package_candidate, os.X_OK):
         return package_candidate
@@ -69,6 +72,11 @@ def configure_main(module: ModuleType, paths: AppPaths) -> None:
     module.STATE_FILE = paths.state_file
     module.LOG_FILE = paths.daemon_log
     module.STATE = module.StateStore(paths.state_file)
+
+    # Keep the established GTK3 implementation and install only the tested
+    # decode, pacing, geometry and transition corrections around it.
+    install_runtime_patches(module)
+    install_transition_guards(module)
 
     def ensure_dirs() -> None:
         paths.ensure_runtime_dir()
