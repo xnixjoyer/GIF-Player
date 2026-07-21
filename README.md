@@ -20,7 +20,7 @@ Details stehen in [ARCHITECTURE.md](ARCHITECTURE.md).
 ## Installation
 
 ```console
-nix profile install github:xnixjoyer/GIF-Player
+nix profile add github:xnixjoyer/GIF-Player
 ```
 
 Direkt ohne Installation:
