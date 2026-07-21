@@ -37,7 +37,23 @@ jobs:
           git diff --exit-code -- flake.lock
 
       - name: Run flake checks
-        run: nix flake check --no-write-lock-file
+        id: flake-check
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          nix flake check --no-write-lock-file --print-build-logs 2>&1 | tee flake-check.log
+
+      - name: Upload flake check log
+        if: steps.flake-check.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: flake-check-log
+          path: flake-check.log
+
+      - name: Fail after uploading flake check log
+        if: steps.flake-check.outcome == 'failure'
+        run: exit 1
 
       - name: Build package
         run: nix build .#default --no-write-lock-file
