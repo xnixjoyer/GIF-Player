@@ -11,10 +11,15 @@
 
 python3Packages.buildPythonApplication {
   pname = "gif-player";
-  version = "0.1.0";
-  pyproject = false;
+  version = "0.2.0";
+  pyproject = true;
 
   src = lib.cleanSource ../.;
+
+  build-system = with python3Packages; [
+    setuptools
+    wheel
+  ];
 
   dependencies = with python3Packages; [
     pygobject3
@@ -35,11 +40,6 @@ python3Packages.buildPythonApplication {
   ];
 
   dontWrapGApps = true;
-
-  buildPhase = ''
-    runHook preBuild
-    runHook postBuild
-  '';
 
   checkPhase = ''
     runHook preCheck
@@ -63,40 +63,6 @@ python3Packages.buildPythonApplication {
     runHook postCheck
   '';
 
-  installPhase = ''
-    runHook preInstall
-
-    libexec="$out/libexec/gif-player"
-    mkdir -p "$libexec" "$out/bin" "$out/share/applications" \
-      "$out/share/fish/vendor_functions.d" "$out/share/fish/vendor_completions.d"
-
-    install -m755 gif-script.py gif-picker.py gif-control.py "$libexec/"
-    install -m644 gif_player_paths.py gif_player_ipc.py gif_player_bootstrap.py "$libexec/"
-    install -m755 gif_player_cli.py gif_picker_entry.py gif_control_entry.py "$libexec/"
-
-    for spec in \
-      "gif-player:gif_player_cli.py" \
-      "gif-picker:gif_picker_entry.py" \
-      "gif-control:gif_control_entry.py"; do
-      name="''${spec%%:*}"
-      script="''${spec#*:}"
-      printf '%s\n' \
-        '#!${python3Packages.python.interpreter}' \
-        'import runpy, sys' \
-        "sys.path.insert(0, '$libexec')" \
-        "runpy.run_path('$libexec/$script', run_name='__main__')" \
-        > "$out/bin/$name"
-      chmod +x "$out/bin/$name"
-    done
-
-    install -m644 gif.fish "$out/share/fish/vendor_functions.d/gif.fish"
-    install -m644 completions/gif-player.fish \
-      "$out/share/fish/vendor_completions.d/gif-player.fish"
-    install -m644 data/*.desktop "$out/share/applications/"
-
-    runHook postInstall
-  '';
-
   preFixup = ''
     makeWrapperArgs+=("''${gappsWrapperArgs[@]}")
   '';
@@ -118,12 +84,17 @@ python3Packages.buildPythonApplication {
     "$out/bin/gif-player" self-test | grep -q '"protocol": 2'
     test "$(stat -c %a "$XDG_RUNTIME_DIR/gif-player")" = 700
 
+    test -x "$out/bin/gif-player"
+    test -x "$out/bin/gif-picker"
+    test -x "$out/bin/gif-control"
+    test -f "$out/libexec/gif-player/gif-script.py"
     ! grep -R -E '/usr/bin/python3|~/Scripts/Gif-Overlay' \
       "$out/bin" "$out/libexec/gif-player/gif_player"*.py
-
     test ! -e "$out/libexec/gif-player/Gifs"
+
     wayland_error="$(env -u WAYLAND_DISPLAY "$out/bin/gif-player" picker 2>&1 || true)"
     printf '%s\n' "$wayland_error" | grep -q 'WAYLAND_DISPLAY ist nicht gesetzt'
+
     find "$out" -type f -exec sha256sum {} + | sort > "$TMPDIR/out-after"
     cmp "$TMPDIR/out-before" "$TMPDIR/out-after"
     runHook postInstallCheck
