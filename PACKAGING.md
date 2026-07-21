@@ -49,9 +49,11 @@ Python modules are installed in the distribution's normal site-packages director
 
 No GIF files, user configuration, cache, state, profile, socket, lock or log files are bundled into packages. Runtime data continues to use XDG paths.
 
-## License
+## Copyright and distribution status
 
-GIF Player is licensed under `GPL-3.0-or-later`. The repository contains a root `LICENSE` file, Python package metadata uses the same identifier, and the Nix, Arch and Fedora package definitions declare the matching license.
+GIF Player is an independent implementation and does not include source code or media from another project. See `NOTICE.md`.
+
+The repository currently grants no open-source license or other general redistribution permission. Default copyright law applies. The package recipes use explicit unlicensed/custom metadata only so local package builds describe the repository honestly; this does not make the project eligible for official Fedora, Arch, AUR or other open-source repositories.
 
 ## CI
 
