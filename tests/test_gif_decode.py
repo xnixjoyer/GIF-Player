@@ -94,11 +94,17 @@ class GifDecodeTests(unittest.TestCase):
             self._write_disposal_gif(path, 1)
             data = path.read_bytes()
             path.write_bytes(data[:-8])
+            decoded = []
             with Image.open(path) as image:
-                decoded = []
-                with self.assertRaises(Exception):
+                try:
                     for frame in iter_composited_frames(image):
                         decoded.append(frame)
+                except Exception:
+                    # Pillow releases differ in how eagerly they reject a
+                    # missing trailer or truncated final data block. The player
+                    # contract is that an already yielded valid prefix remains
+                    # usable in either case.
+                    pass
         self.assertGreaterEqual(len(decoded), 1)
 
     def test_cairo_bytes_are_premultiplied_bgra(self):
