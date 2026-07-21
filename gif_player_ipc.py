@@ -99,10 +99,9 @@ def ensure_daemon(
     while time.monotonic() < deadline:
         if daemon_alive(paths):
             return True
-        if process.poll() is not None:
-            # A concurrent launcher may have won the flock race. Check once
-            # more before reporting a failure.
-            return daemon_alive(paths)
+        # Do not fail immediately when this child loses the flock race. A
+        # concurrent launcher may still be starting the daemon and socket.
+        process.poll()
         time.sleep(0.1)
     return daemon_alive(paths)
 
