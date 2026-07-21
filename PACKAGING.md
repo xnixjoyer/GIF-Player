@@ -1,6 +1,6 @@
 # Cross-distribution packaging
 
-GIF Player keeps one shared Python wheel definition in `pyproject.toml` while preserving the existing GTK3 supervisor, JSON IPC v2, XDG paths, runtime patches, profiles, multiple instances, and Nix flake.
+GIF Player keeps one shared Python wheel definition in `pyproject.toml` while preserving the GTK3 supervisor, JSON IPC v2, XDG paths, runtime patches, profiles, multiple instances and Nix flake.
 
 ## Fedora
 
@@ -45,13 +45,13 @@ sudo pacman -U gif-player-*.pkg.tar.zst
 /usr/share/fish/vendor_completions.d/
 ```
 
-Python modules are installed in the distribution's normal site-packages directory. The bootstrap locates the legacy GTK implementation through the platform data prefix, so `/usr/libexec/gif-player` works for Fedora and Arch while the existing package-local Nix layout continues to work.
+Python modules are installed in the distribution's normal site-packages directory. The bootstrap locates the GTK implementation through the platform data prefix, so `/usr/libexec/gif-player` works for Fedora and Arch while the package-local Nix layout continues to work.
 
-No GIF files, user configuration, cache, state, profile, socket, lock, or log files are bundled into packages. Runtime data continues to use XDG paths.
+No GIF files, user configuration, cache, state, profile, socket, lock or log files are bundled into packages. Runtime data continues to use XDG paths.
 
-## License status
+## License
 
-The repository currently has no license file. RPM and Arch metadata therefore use an explicit unresolved/custom license marker. This must be resolved before submission to official Fedora or Arch repositories.
+GIF Player is licensed under `GPL-3.0-or-later`. The repository contains a root `LICENSE` file, Python package metadata uses the same identifier, and the Nix, Arch and Fedora package definitions declare the matching license.
 
 ## CI
 
