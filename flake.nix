@@ -25,12 +25,12 @@
         }
       );
 
-      apps = forAllSystems (system: {
+      apps = forAllSystems (system: rec {
         gif-player = {
           type = "app";
           program = "${self.packages.${system}.gif-player}/bin/gif-player";
         };
-        default = self.apps.${system}.gif-player;
+        default = gif-player;
       });
 
       checks = forAllSystems (
@@ -82,6 +82,7 @@
             shellHook = ''
               export PYTHONPATH="$PWD''${PYTHONPATH:+:$PYTHONPATH}"
               export GI_TYPELIB_PATH="${pkgs.lib.makeSearchPath "lib/girepository-1.0" [
+                pkgs.glib
                 pkgs.gtk3
                 pkgs.gtk-layer-shell
                 pkgs.gdk-pixbuf
