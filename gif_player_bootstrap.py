@@ -11,7 +11,7 @@ from pathlib import Path
 from types import ModuleType
 
 from gif_player_paths import AppPaths
-from gif_player_runtime import install_runtime_patches
+from gif_player_runtime_patch import install_runtime_patches
 
 LIBEXEC_DIR = Path(__file__).resolve().parent
 
