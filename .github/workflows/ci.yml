@@ -54,7 +54,15 @@ jobs:
             -czf "$HOME/rpmbuild/SOURCES/gif-player-0.2.0.tar.gz" .
           cp packaging/fedora/gif-player.spec "$HOME/rpmbuild/SPECS/"
       - name: Build RPM
-        run: rpmbuild -ba "$HOME/rpmbuild/SPECS/gif-player.spec"
+        run: |
+          set -o pipefail
+          rpmbuild -ba "$HOME/rpmbuild/SPECS/gif-player.spec" 2>&1 | tee /tmp/rpmbuild.log
+      - name: Upload RPM build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fedora-rpmbuild-log
+          path: /tmp/rpmbuild.log
       - name: Inspect RPM contents
         run: |
           rpm -qpl "$HOME"/rpmbuild/RPMS/noarch/gif-player-*.noarch.rpm | tee /tmp/rpm-files
