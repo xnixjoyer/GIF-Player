@@ -1,16 +1,32 @@
 #!/usr/bin/env python3
-"""Load the unchanged GTK implementation and inject package-safe paths."""
+"""Load the GTK implementation and inject package-safe paths."""
 
 from __future__ import annotations
 
 import importlib.util
 import os
+import sysconfig
 from pathlib import Path
 from types import ModuleType
 
 from gif_player_paths import AppPaths
 
-LIBEXEC_DIR = Path(__file__).resolve().parent
+
+def _libexec_dir() -> Path:
+    """Locate the immutable implementation files without relying on PATH or cwd."""
+    override = os.environ.get("GIF_PLAYER_LIBEXEC_DIR")
+    if override:
+        return Path(override).expanduser().resolve()
+
+    beside_module = Path(__file__).resolve().parent
+    if (beside_module / "gif-script.py").is_file():
+        return beside_module
+
+    installed = Path(sysconfig.get_path("data")) / "libexec" / "gif-player"
+    return installed
+
+
+LIBEXEC_DIR = _libexec_dir()
 
 
 def require_wayland() -> None:
@@ -23,11 +39,20 @@ def require_wayland() -> None:
 
 def load_legacy(filename: str, module_name: str) -> ModuleType:
     source = LIBEXEC_DIR / filename
+    if not source.is_file():
+        raise RuntimeError(f"Installierte Komponente fehlt: {source}")
     spec = importlib.util.spec_from_file_location(module_name, source)
     if spec is None or spec.loader is None:
         raise RuntimeError(f"Kann installierte Komponente nicht laden: {source}")
     module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
+    try:
+        spec.loader.exec_module(module)
+    except (ImportError, ValueError) as exc:
+        raise RuntimeError(
+            "GTK3/GtkLayerShell konnte nicht geladen werden. Prüfe PyGObject, "
+            "GTK3, gtk-layer-shell und die GObject-Introspection-Typelibs: "
+            f"{exc}"
+        ) from exc
     return module
 
 
