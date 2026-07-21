@@ -1,4 +1,16 @@
-# GIF Player
+<p align="center">
+  <img src="./Pics/gif-player-logo.svg" alt="GIF Player logo" width="170">
+</p>
+
+<h1 align="center">GIF Player</h1>
+
+<p align="center">
+  <strong>Animated GTK3 GIF overlays for Wayland</strong>
+</p>
+
+<p align="center">
+  NixOS first · Arch Linux · Fedora
+</p>
 
 GIF Player displays animated GIFs as lightweight desktop overlays on Wayland.
 It uses GTK3 and GtkLayerShell, while one supervisor daemon manages every
@@ -14,6 +26,23 @@ rendered through Cairo.
 > Wayfire. X11 and GTK4 are not supported.
 
 GIF files are not bundled with the project. Use your own local GIF collection.
+
+## Preview
+
+<table>
+  <tr>
+    <td width="50%" align="center">
+      <img src="./Pics/GIF-picker.png" alt="GIF Player picker" width="100%">
+      <br>
+      <sub><strong>GIF Picker</strong> — browse and launch GIFs from your configured collection.</sub>
+    </td>
+    <td width="50%" align="center">
+      <img src="./Pics/Gif%20in%20Action.png" alt="GIF Player overlays running on a Wayland desktop" width="100%">
+      <br>
+      <sub><strong>In action</strong> — independent animated overlays running directly on the desktop.</sub>
+    </td>
+  </tr>
+</table>
 
 ## Features
 
