@@ -7,6 +7,7 @@ import importlib.util
 import os
 import shutil
 import sys
+import sysconfig
 from pathlib import Path
 from types import ModuleType
 
@@ -14,7 +15,18 @@ from gif_player_paths import AppPaths
 from gif_player_runtime_guard import install_transition_guards
 from gif_player_runtime_patch import install_runtime_patches
 
-LIBEXEC_DIR = Path(__file__).resolve().parent
+
+def _libexec_dir() -> Path:
+    override = os.environ.get("GIF_PLAYER_LIBEXEC_DIR")
+    if override:
+        return Path(override).expanduser().resolve()
+    beside_module = Path(__file__).resolve().parent
+    if (beside_module / "gif-script.py").is_file():
+        return beside_module
+    return Path(sysconfig.get_path("data")) / "libexec" / "gif-player"
+
+
+LIBEXEC_DIR = _libexec_dir()
 
 
 def require_wayland() -> None:
@@ -27,21 +39,37 @@ def require_wayland() -> None:
 
 def load_legacy(filename: str, module_name: str) -> ModuleType:
     source = LIBEXEC_DIR / filename
+    if not source.is_file():
+        raise RuntimeError(f"Installierte Komponente fehlt: {source}")
     spec = importlib.util.spec_from_file_location(module_name, source)
     if spec is None or spec.loader is None:
         raise RuntimeError(f"Kann installierte Komponente nicht laden: {source}")
     module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
+    try:
+        spec.loader.exec_module(module)
+    except (ImportError, ValueError) as exc:
+        raise RuntimeError(
+            "GTK3/GtkLayerShell konnte nicht geladen werden. Prüfe PyGObject, "
+            "GTK3, gtk-layer-shell und die GObject-Introspection-Typelibs: "
+            f"{exc}"
+        ) from exc
     return module
 
 
-def packaged_executable(name: str) -> Path | None:
-    """Return a package sibling executable before falling back to PATH.
+def validate_graphics(module: ModuleType) -> None:
+    initialized = module.Gtk.init_check(None)
+    ok = initialized[0] if isinstance(initialized, tuple) else bool(initialized)
+    if not ok:
+        raise RuntimeError("GTK konnte die aktuelle Wayland-Anzeige nicht initialisieren.")
+    supported = getattr(module.GtkLayerShell, "is_supported", None)
+    if callable(supported) and not supported():
+        raise RuntimeError(
+            "Der aktive Wayland-Compositor unterstützt das Layer-Shell-Protokoll nicht."
+        )
 
-    Nix installs this module below ``libexec/gif-player``. Starting another
-    component with the bare Python interpreter would bypass the generated Nix
-    wrapper and can lose GTK/GI environment variables. Prefer ``$out/bin``.
-    """
+
+def packaged_executable(name: str) -> Path | None:
+    """Return a package sibling executable before falling back to PATH."""
 
     package_candidate = LIBEXEC_DIR.parent.parent / "bin" / name
     if package_candidate.is_file() and os.access(package_candidate, os.X_OK):
@@ -73,8 +101,6 @@ def configure_main(module: ModuleType, paths: AppPaths) -> None:
     module.LOG_FILE = paths.daemon_log
     module.STATE = module.StateStore(paths.state_file)
 
-    # Keep the established GTK3 implementation and install only the tested
-    # decode, pacing, geometry and transition corrections around it.
     install_runtime_patches(module)
     install_transition_guards(module)
 
@@ -95,9 +121,6 @@ def configure_picker(module: ModuleType, paths: AppPaths) -> None:
     module.CACHE_DIR = paths.thumbnail_cache
     module.PROFILE_FILE = paths.profile_file
     module.DAEMON_SCRIPT = LIBEXEC_DIR / "gif_player_cli.py"
-
-    # Replace the legacy launch helpers so packaged runs always use the wrapped
-    # executable and the exact same XDG socket paths as the CLI.
     module.daemon_send = lambda command, timeout=2.0: shared_daemon_send(
         paths, command, timeout
     )
