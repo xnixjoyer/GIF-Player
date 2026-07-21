@@ -84,6 +84,7 @@ gif-player stop-all | kill-all     Alle Widgets schließen
 gif-player picker                  Picker öffnen
 gif-player control                 Control-Panel öffnen
 gif-player daemon                  Supervisor manuell starten
+gif-player doctor                  Python- und GTK-Abhängigkeiten prüfen
 ```
 
 Widget-Aktionen: `status`, `lock`, `unlock`, `toggle`, `pause`, `play`,
@@ -155,6 +156,7 @@ Wayland-Fenster.
   Compositors prüfen und das Log unter `$XDG_RUNTIME_DIR/gif-player/daemon.log`
   lesen.
 - Falsches GIF-Verzeichnis: `gif-player self-test` zeigt die aufgelösten Pfade.
+- Fehlende Python-/GTK-Komponente: `gif-player doctor` prüft Imports und Typelibs.
 - Nach einem Paketupdate: `gif-player stop-all`; der nächste Start lädt den
   Daemon aus dem neuen Paket.
 
