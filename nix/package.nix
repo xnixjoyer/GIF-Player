@@ -122,8 +122,8 @@ python3Packages.buildPythonApplication {
       "$out/bin" "$out/libexec/gif-player/gif_player"*.py
 
     test ! -e "$out/libexec/gif-player/Gifs"
-    env -u WAYLAND_DISPLAY "$out/bin/gif-player" picker 2>&1 \
-      | grep -q 'WAYLAND_DISPLAY ist nicht gesetzt'
+    wayland_error="$(env -u WAYLAND_DISPLAY "$out/bin/gif-player" picker 2>&1 || true)"
+    printf '%s\n' "$wayland_error" | grep -q 'WAYLAND_DISPLAY ist nicht gesetzt'
     find "$out" -type f -exec sha256sum {} + | sort > "$TMPDIR/out-after"
     cmp "$TMPDIR/out-before" "$TMPDIR/out-after"
     runHook postInstallCheck
