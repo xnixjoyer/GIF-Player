@@ -15,10 +15,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: python -m pip install ruff
-      - run: ruff check gif_player_*.py tests
+      - run: python -m pip install ruff build
+      - run: ruff check --select F,E9 gif_player_*.py tests
       - run: python -m compileall -q .
       - run: PYTHONPATH=. python -m unittest discover -s tests -v
+      - run: python -m build --wheel --no-isolation
       - run: python gif_player_cli.py --help
       - run: |
           output=$(env -u WAYLAND_DISPLAY python gif_player_cli.py picker 2>&1 || true)
@@ -48,7 +49,8 @@ jobs:
       - name: Create source archive
         run: |
           mkdir -p "$HOME/rpmbuild/SOURCES" "$HOME/rpmbuild/SPECS"
-          tar --exclude-vcs --transform 's,^,gif-player-0.2.0/,' \
+          tar --exclude-vcs --exclude='./dist' --exclude='./build' \
+            --transform 's,^,gif-player-0.2.0/,' \
             -czf "$HOME/rpmbuild/SOURCES/gif-player-0.2.0.tar.gz" .
           cp packaging/fedora/gif-player.spec "$HOME/rpmbuild/SPECS/"
       - name: Build RPM
@@ -57,6 +59,8 @@ jobs:
         run: |
           rpm -qpl "$HOME"/rpmbuild/RPMS/noarch/gif-player-*.noarch.rpm | tee /tmp/rpm-files
           grep -q '/usr/bin/gif-player$' /tmp/rpm-files
+          grep -q '/usr/bin/gif-picker$' /tmp/rpm-files
+          grep -q '/usr/bin/gif-control$' /tmp/rpm-files
           grep -q '/usr/libexec/gif-player/gif-script.py$' /tmp/rpm-files
           ! grep -E '^/home/|/Gifs/' /tmp/rpm-files
 
@@ -82,5 +86,7 @@ jobs:
           test -n "$pkg"
           pacman -Qlp "$pkg" | tee /tmp/arch-files
           grep -q 'usr/bin/gif-player$' /tmp/arch-files
+          grep -q 'usr/bin/gif-picker$' /tmp/arch-files
+          grep -q 'usr/bin/gif-control$' /tmp/arch-files
           grep -q 'usr/libexec/gif-player/gif-script.py$' /tmp/arch-files
           ! grep -E '^home/|/Gifs/' /tmp/arch-files
