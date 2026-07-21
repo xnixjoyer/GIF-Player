@@ -45,7 +45,7 @@ submission to Fedora's official repositories.
 %check
 %{python3} -m compileall -q .
 PYTHONPATH=. %{python3} -m unittest discover -s tests -v
-%{buildroot}%{_bindir}/gif-player --help >/dev/null
+PYTHONPATH=%{buildroot}%{python3_sitelib} %{buildroot}%{_bindir}/gif-player --help >/dev/null
 
 desktop-file-validate %{buildroot}%{_datadir}/applications/gif-player-picker.desktop
 desktop-file-validate %{buildroot}%{_datadir}/applications/gif-player-control.desktop
@@ -54,6 +54,7 @@ test -x %{buildroot}%{_bindir}/gif-player
 test -x %{buildroot}%{_bindir}/gif-picker
 test -x %{buildroot}%{_bindir}/gif-control
 test -f %{buildroot}%{_libexecdir}/gif-player/gif-script.py
+test ! -e %{buildroot}%{_libexecdir}/gif-player/Gifs
 ! find %{buildroot} -type f -print0 | xargs -0 grep -l '/home/\|~/Scripts/Gif-Overlay' >/dev/null
 
 %files -f %{pyproject_files}
