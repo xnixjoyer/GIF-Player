@@ -2,7 +2,7 @@ Name:           gif-player
 Version:        0.3.0
 Release:        1%{?dist}
 Summary:        GTK3 layer-shell GIF overlay supervisor for Wayland
-License:        LicenseRef-Unknown
+License:        GPL-3.0-or-later
 URL:            https://github.com/xnixjoyer/GIF-Player
 Source0:        %{name}-%{version}.tar.gz
 
@@ -24,10 +24,6 @@ Requires:       gobject-introspection
 GIF Player displays animated GIF files as GTK3 layer-shell overlays on
 compatible Wayland compositors. One supervisor process manages multiple
 windows and communicates with clients through JSON Unix-socket protocol v2.
-
-The upstream repository currently has no license file. The License tag is
-therefore deliberately marked LicenseRef-Unknown and must be resolved before
-submission to Fedora's official repositories.
 
 %prep
 %autosetup -n %{name}-%{version}
@@ -59,6 +55,7 @@ test -f %{buildroot}%{_libexecdir}/gif-player/gif-control.py
 test ! -e %{buildroot}%{_libexecdir}/gif-player/Gifs
 
 %files -f %{pyproject_files}
+%license LICENSE
 %{_bindir}/gif-player
 %{_bindir}/gif-picker
 %{_bindir}/gif-control
