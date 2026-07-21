@@ -22,7 +22,12 @@ class PathTests(unittest.TestCase):
             self.assertEqual(paths.runtime_dir, root / "run" / "gif-player")
             self.assertEqual(paths.config_dir, root / "config" / "gif-player")
             self.assertEqual(paths.cache_dir, root / "cache" / "gif-player")
+            self.assertEqual(paths.data_dir, root / "data" / "gif-player")
             self.assertEqual(paths.gif_dir, root / "data" / "gif-player" / "gifs")
+            self.assertEqual(paths.state_file, root / "config" / "gif-player" / "state.json")
+            self.assertEqual(paths.profile_file, root / "config" / "gif-player" / "profiles.json")
+            self.assertEqual(paths.thumbnail_cache, root / "cache" / "gif-player" / "thumbs")
+            self.assertEqual(paths.socket_path, root / "run" / "gif-player" / "daemon.sock")
             paths.ensure_runtime_dir()
             self.assertEqual(paths.runtime_dir.stat().st_mode & 0o777, 0o700)
 
@@ -40,6 +45,16 @@ class PathTests(unittest.TestCase):
             nested.parent.mkdir()
             nested.write_bytes(b"GIF89a")
             self.assertEqual(resolve_gif("mascot", root), nested.resolve())
+
+    def test_ambiguous_name_is_rejected(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            for category in ("one", "two"):
+                path = root / category / "mascot.gif"
+                path.parent.mkdir()
+                path.write_bytes(b"GIF89a")
+            with self.assertRaisesRegex(RuntimeError, "mehrdeutig"):
+                resolve_gif("mascot", root)
 
     def test_global_gif_dir_can_appear_after_command(self):
         value, argv = _extract_gif_dir(["run", "mascot", "--gif-dir", "/tmp/gifs"])
