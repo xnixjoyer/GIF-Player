@@ -41,13 +41,23 @@ class SourceContractTests(unittest.TestCase):
         bootstrap = (ROOT / "gif_player_bootstrap.py").read_text(encoding="utf-8")
         package = (ROOT / "nix" / "package.nix").read_text(encoding="utf-8")
         patch = (ROOT / "gif_player_runtime_patch.py").read_text(encoding="utf-8")
+        guard = (ROOT / "gif_player_runtime_guard.py").read_text(encoding="utf-8")
         self.assertIn(
             "from gif_player_runtime_patch import install_runtime_patches",
             bootstrap,
         )
+        self.assertIn(
+            "from gif_player_runtime_guard import install_transition_guards",
+            bootstrap,
+        )
         self.assertIn("install_runtime_patches(module)", bootstrap)
-        self.assertIn("gif_player_runtime.py", package)
-        self.assertIn("gif_player_runtime_patch.py", package)
+        self.assertIn("install_transition_guards(module)", bootstrap)
+        for filename in (
+            "gif_player_runtime.py",
+            "gif_player_runtime_patch.py",
+            "gif_player_runtime_guard.py",
+        ):
+            self.assertIn(filename, package)
         for marker in (
             '"surface-to-canvas-begin"',
             '"surface-to-canvas-end"',
@@ -56,6 +66,9 @@ class SourceContractTests(unittest.TestCase):
             "advance_frame_timeline(",
         ):
             self.assertIn(marker, patch)
+        self.assertIn('self._surface_phase == "to-canvas"', guard)
+        self.assertIn("canvas_ready", guard)
+        self.assertIn("self._apply_surface_mode()", guard)
 
     def test_canonical_launchers_have_no_global_python_path(self):
         sources = "\n".join(
