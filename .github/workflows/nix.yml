@@ -1,0 +1,51 @@
+name: Nix
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "flake.nix"
+      - "flake.lock"
+      - "nix/**"
+      - "*.py"
+      - ".github/workflows/nix.yml"
+  pull_request:
+    paths:
+      - "flake.nix"
+      - "flake.lock"
+      - "nix/**"
+      - "*.py"
+      - ".github/workflows/nix.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: DeterminateSystems/determinate-nix-action@v3
+
+      - name: Verify lock file is complete
+        run: |
+          nix flake metadata --no-write-lock-file . >/dev/null
+          git diff --exit-code -- flake.lock
+
+      - name: Run flake checks
+        run: nix flake check --no-write-lock-file
+
+      - name: Build package
+        run: nix build .#default --no-write-lock-file
+
+      - name: Test packaged CLI
+        run: ./result/bin/gif-player --help
+
+      - name: Test remote profile install
+        run: |
+          nix profile add "github:${GITHUB_REPOSITORY}/${GITHUB_SHA}"
+          gif-player --help
