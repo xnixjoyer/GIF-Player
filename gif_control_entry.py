@@ -8,7 +8,13 @@ import os
 import subprocess
 import sys
 
-from gif_player_bootstrap import configure_control, load_legacy, picker_command, require_wayland
+from gif_player_bootstrap import (
+    configure_control,
+    load_legacy,
+    picker_command,
+    require_wayland,
+    validate_graphics,
+)
 from gif_player_paths import get_paths
 
 
@@ -21,6 +27,7 @@ def main(argv: list[str] | None = None) -> int:
         require_wayland()
         paths.ensure_runtime_dir()
         module = load_legacy("gif-control.py", "gif_player_legacy_control")
+        validate_graphics(module)
         configure_control(module, paths)
 
         def open_picker(_self, *_args):

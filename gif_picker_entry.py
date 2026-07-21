@@ -6,7 +6,12 @@ from __future__ import annotations
 import argparse
 import sys
 
-from gif_player_bootstrap import configure_picker, load_legacy, require_wayland
+from gif_player_bootstrap import (
+    configure_picker,
+    load_legacy,
+    require_wayland,
+    validate_graphics,
+)
 from gif_player_paths import get_paths
 
 
@@ -22,6 +27,7 @@ def main(argv: list[str] | None = None) -> int:
         paths.ensure_cache_dir()
         paths.ensure_gif_dir()
         module = load_legacy("gif-picker.py", "gif_player_legacy_picker")
+        validate_graphics(module)
         configure_picker(module, paths)
         module.main()
         return 0
