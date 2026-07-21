@@ -112,7 +112,9 @@ python3Packages.buildPythonApplication {
     mkdir -p "$HOME" "$XDG_RUNTIME_DIR"
     chmod 700 "$XDG_RUNTIME_DIR"
 
+    find "$out" -type f -exec sha256sum {} + | sort > "$TMPDIR/out-before"
     "$out/bin/gif-player" --help >/dev/null
+    "$out/bin/gif-player" doctor | grep -q 'GTK typelibs: OK'
     "$out/bin/gif-player" self-test | grep -q '"protocol": 2'
     test "$(stat -c %a "$XDG_RUNTIME_DIR/gif-player")" = 700
 
@@ -120,6 +122,10 @@ python3Packages.buildPythonApplication {
       "$out/bin" "$out/libexec/gif-player/gif_player"*.py
 
     test ! -e "$out/libexec/gif-player/Gifs"
+    env -u WAYLAND_DISPLAY "$out/bin/gif-player" picker 2>&1 \
+      | grep -q 'WAYLAND_DISPLAY ist nicht gesetzt'
+    find "$out" -type f -exec sha256sum {} + | sort > "$TMPDIR/out-after"
+    cmp "$TMPDIR/out-before" "$TMPDIR/out-after"
     runHook postInstallCheck
   '';
 
