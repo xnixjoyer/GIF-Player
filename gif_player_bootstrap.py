@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
-"""Load the unchanged GTK implementation and inject package-safe paths."""
+"""Load the GTK implementation and inject package-safe paths and commands."""
 
 from __future__ import annotations
 
 import importlib.util
 import os
+import shutil
+import sys
 from pathlib import Path
 from types import ModuleType
 
@@ -31,6 +33,34 @@ def load_legacy(filename: str, module_name: str) -> ModuleType:
     return module
 
 
+def packaged_executable(name: str) -> Path | None:
+    """Return a package sibling executable before falling back to PATH.
+
+    Nix installs this module below ``libexec/gif-player``. Starting another
+    component with the bare Python interpreter would bypass the generated Nix
+    wrapper and can lose GTK/GI environment variables. Prefer ``$out/bin``.
+    """
+    package_candidate = LIBEXEC_DIR.parent.parent / "bin" / name
+    if package_candidate.is_file() and os.access(package_candidate, os.X_OK):
+        return package_candidate
+    path_candidate = shutil.which(name)
+    return Path(path_candidate) if path_candidate else None
+
+
+def daemon_command() -> list[str]:
+    executable = packaged_executable("gif-player")
+    if executable is not None:
+        return [str(executable), "daemon"]
+    return [sys.executable, str(LIBEXEC_DIR / "gif_player_cli.py"), "daemon"]
+
+
+def picker_command() -> list[str]:
+    executable = packaged_executable("gif-picker")
+    if executable is not None:
+        return [str(executable)]
+    return [sys.executable, str(LIBEXEC_DIR / "gif_picker_entry.py")]
+
+
 def configure_main(module: ModuleType, paths: AppPaths) -> None:
     module.RUNTIME_DIR = paths.runtime_dir
     module.DAEMON_SOCK = paths.socket_path
@@ -48,6 +78,9 @@ def configure_main(module: ModuleType, paths: AppPaths) -> None:
 
 
 def configure_picker(module: ModuleType, paths: AppPaths) -> None:
+    from gif_player_ipc import daemon_send as shared_daemon_send
+    from gif_player_ipc import ensure_daemon as shared_ensure_daemon
+
     module.RUNTIME_DIR = paths.runtime_dir
     module.DAEMON_SOCK = paths.socket_path
     module.GIF_DIR = paths.gif_dir
@@ -55,8 +88,22 @@ def configure_picker(module: ModuleType, paths: AppPaths) -> None:
     module.PROFILE_FILE = paths.profile_file
     module.DAEMON_SCRIPT = LIBEXEC_DIR / "gif_player_cli.py"
 
+    # Replace the legacy launch helpers so packaged runs always use the wrapped
+    # executable and the exact same XDG socket paths as the CLI.
+    module.daemon_send = lambda command, timeout=2.0: shared_daemon_send(
+        paths, command, timeout
+    )
+    module.ensure_daemon = lambda timeout=6.0: shared_ensure_daemon(
+        paths, daemon_command(), timeout
+    )
+
 
 def configure_control(module: ModuleType, paths: AppPaths) -> None:
+    from gif_player_ipc import daemon_send as shared_daemon_send
+
     module.RUNTIME_DIR = paths.runtime_dir
     module.DAEMON_SOCK = paths.socket_path
     module.PICKER_SCRIPT = LIBEXEC_DIR / "gif_picker_entry.py"
+    module.daemon_send = lambda command, timeout=2.0: shared_daemon_send(
+        paths, command, timeout
+    )
