@@ -5,6 +5,7 @@ import unittest
 from pathlib import Path
 
 from gif_player_cli import _extract_gif_dir, resolve_gif
+from gif_player_ipc import daemon_argv
 from gif_player_paths import get_paths
 
 
@@ -50,6 +51,29 @@ class PathTests(unittest.TestCase):
         paths = get_paths("/nix/store/does-not-exist/gifs", env={}, home=Path("/tmp"))
         with self.assertRaises(RuntimeError):
             paths.ensure_gif_dir()
+
+    def test_daemon_start_prefers_packaged_wrapper(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            script = root / "libexec" / "gif-player" / "gif_player_cli.py"
+            executable = root / "bin" / "gif-player"
+            script.parent.mkdir(parents=True)
+            executable.parent.mkdir(parents=True)
+            script.write_text("# test\n")
+            executable.write_text("#!/bin/sh\n")
+            executable.chmod(0o755)
+
+            self.assertEqual(
+                daemon_argv(script),
+                [str(executable), "daemon"],
+            )
+
+    def test_daemon_start_falls_back_to_python_for_source_tree(self):
+        with tempfile.TemporaryDirectory() as temp:
+            script = Path(temp) / "gif_player_cli.py"
+            script.write_text("# test\n")
+            argv = daemon_argv(script)
+            self.assertEqual(argv[-2:], [str(script), "daemon"])
 
 
 if __name__ == "__main__":

@@ -4,10 +4,12 @@
 from __future__ import annotations
 
 import json
+import os
 import socket
 import subprocess
 import sys
 import time
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
@@ -41,30 +43,67 @@ def daemon_alive(paths: AppPaths) -> bool:
     return bool(daemon_send(paths, {"action": "ping"}, timeout=0.6).get("ok"))
 
 
+def daemon_argv(command: Sequence[str] | str | Path) -> list[str]:
+    """Normalize a daemon command while preserving packaged wrappers.
+
+    Older callers pass the path to ``gif_player_cli.py``. For a Nix layout,
+    transparently resolve that path back to ``$out/bin/gif-player`` so the
+    child keeps the wrapper-provided GTK/GI environment.
+    """
+    if isinstance(command, (str, Path)):
+        script = Path(command)
+        package_executable = script.parent.parent.parent / "bin" / "gif-player"
+        if package_executable.is_file() and os.access(package_executable, os.X_OK):
+            return [str(package_executable), "daemon"]
+        return [sys.executable, str(script), "daemon"]
+
+    argv = [str(part) for part in command]
+    if not argv:
+        raise ValueError("Leerer Daemon-Startbefehl")
+    return argv
+
+
 def ensure_daemon(
     paths: AppPaths,
-    cli_script: Path,
+    command: Sequence[str] | str | Path,
     timeout: float = DAEMON_BOOT_TIMEOUT,
 ) -> bool:
     if daemon_alive(paths):
         return True
     paths.ensure_runtime_dir()
+
     try:
-        subprocess.Popen(
-            [sys.executable, str(cli_script), "daemon"],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            start_new_session=True,
-        )
+        argv = daemon_argv(command)
+        env = os.environ.copy()
+        env.setdefault("PYTHONUNBUFFERED", "1")
+        with paths.daemon_log.open("a", encoding="utf-8") as log_file:
+            log_file.write(
+                time.strftime("%Y-%m-%d %H:%M:%S ")
+                + "[launcher] "
+                + " ".join(argv)
+                + "\n"
+            )
+            log_file.flush()
+            process = subprocess.Popen(
+                argv,
+                env=env,
+                stdout=log_file,
+                stderr=subprocess.STDOUT,
+                start_new_session=True,
+            )
     except Exception as exc:
         print(f"Daemon-Start fehlgeschlagen: {exc}", file=sys.stderr)
         return False
+
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         if daemon_alive(paths):
             return True
+        # Do not fail immediately when this child loses the flock race. A
+        # concurrent launcher may still be starting the daemon and socket.
+        process.poll()
         time.sleep(0.1)
-    return False
+    return daemon_alive(paths)
 
 
 def build_widget_cmd(widget_id: str, action_args: list[str]) -> dict[str, Any]:
