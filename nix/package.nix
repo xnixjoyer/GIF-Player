@@ -76,6 +76,7 @@ python3Packages.buildPythonApplication {
       gif_player_ipc.py \
       gif_player_runtime.py \
       gif_player_runtime_patch.py \
+      gif_player_runtime_guard.py \
       gif_player_bootstrap.py \
       "$libexec/"
     install -m755 gif_player_cli.py gif_picker_entry.py gif_control_entry.py "$libexec/"
