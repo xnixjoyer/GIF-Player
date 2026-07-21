@@ -29,7 +29,17 @@ py-modules = [
 ]
 
 [tool.setuptools.data-files]
-"libexec/gif-player" = ["gif-script.py", "gif-picker.py", "gif-control.py"]
+"libexec/gif-player" = [
+  "gif-script.py",
+  "gif-picker.py",
+  "gif-control.py",
+  "gif_player_paths.py",
+  "gif_player_ipc.py",
+  "gif_player_bootstrap.py",
+  "gif_player_cli.py",
+  "gif_picker_entry.py",
+  "gif_control_entry.py",
+]
 "share/applications" = ["data/gif-player-picker.desktop", "data/gif-player-control.desktop"]
 "share/fish/vendor_functions.d" = ["gif.fish"]
 "share/fish/vendor_completions.d" = ["completions/gif-player.fish"]
