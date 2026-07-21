@@ -11,6 +11,7 @@ from pathlib import Path
 from types import ModuleType
 
 from gif_player_paths import AppPaths
+from gif_player_runtime_guard import install_transition_guards
 from gif_player_runtime_patch import install_runtime_patches
 
 LIBEXEC_DIR = Path(__file__).resolve().parent
@@ -75,6 +76,7 @@ def configure_main(module: ModuleType, paths: AppPaths) -> None:
     # Keep the established GTK3 implementation and install only the tested
     # decode, pacing, geometry and transition corrections around it.
     install_runtime_patches(module)
+    install_transition_guards(module)
 
     def ensure_dirs() -> None:
         paths.ensure_runtime_dir()
