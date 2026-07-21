@@ -1,0 +1,86 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install ruff
+      - run: ruff check gif_player_*.py tests
+      - run: python -m compileall -q .
+      - run: PYTHONPATH=. python -m unittest discover -s tests -v
+      - run: python gif_player_cli.py --help
+      - run: |
+          output=$(env -u WAYLAND_DISPLAY python gif_player_cli.py picker 2>&1 || true)
+          grep -q 'WAYLAND_DISPLAY ist nicht gesetzt' <<<"$output"
+
+  nix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v31
+      - run: nix flake check --print-build-logs
+      - run: nix build .#gif-player --print-build-logs
+      - run: ./result/bin/gif-player --help
+      - run: nix run . -- --help
+
+  fedora-rpm:
+    runs-on: ubuntu-latest
+    container: fedora:44
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install RPM build dependencies
+        run: >-
+          dnf install -y rpm-build python3-devel pyproject-rpm-macros
+          python3-setuptools python3-wheel desktop-file-utils
+          python3-gobject python3-cairo python3-pillow gtk3 gtk-layer-shell
+          gobject-introspection
+      - name: Create source archive
+        run: |
+          mkdir -p "$HOME/rpmbuild/SOURCES" "$HOME/rpmbuild/SPECS"
+          tar --exclude-vcs --transform 's,^,gif-player-0.2.0/,' \
+            -czf "$HOME/rpmbuild/SOURCES/gif-player-0.2.0.tar.gz" .
+          cp packaging/fedora/gif-player.spec "$HOME/rpmbuild/SPECS/"
+      - name: Build RPM
+        run: rpmbuild -ba "$HOME/rpmbuild/SPECS/gif-player.spec"
+      - name: Inspect RPM contents
+        run: |
+          rpm -qpl "$HOME"/rpmbuild/RPMS/noarch/gif-player-*.noarch.rpm | tee /tmp/rpm-files
+          grep -q '/usr/bin/gif-player$' /tmp/rpm-files
+          grep -q '/usr/libexec/gif-player/gif-script.py$' /tmp/rpm-files
+          ! grep -E '^/home/|/Gifs/' /tmp/rpm-files
+
+  arch-package:
+    runs-on: ubuntu-latest
+    container: archlinux:latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install package dependencies
+        run: |
+          pacman -Syu --noconfirm
+          pacman -S --needed --noconfirm base-devel python python-gobject python-cairo \
+            python-pillow gtk3 gtk-layer-shell gobject-introspection-runtime \
+            python-build python-installer python-setuptools python-wheel desktop-file-utils
+      - name: Build package as unprivileged user
+        run: |
+          useradd -m builder
+          chown -R builder:builder "$GITHUB_WORKSPACE"
+          su builder -c "cd '$GITHUB_WORKSPACE/packaging/arch' && makepkg --cleanbuild --noconfirm"
+      - name: Inspect package contents
+        run: |
+          pkg=$(find packaging/arch -maxdepth 1 -name 'gif-player-*.pkg.tar.zst' -print -quit)
+          test -n "$pkg"
+          pacman -Qlp "$pkg" | tee /tmp/arch-files
+          grep -q 'usr/bin/gif-player$' /tmp/arch-files
+          grep -q 'usr/libexec/gif-player/gif-script.py$' /tmp/arch-files
+          ! grep -E '^home/|/Gifs/' /tmp/arch-files
