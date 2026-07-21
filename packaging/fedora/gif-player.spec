@@ -55,7 +55,8 @@ test -x %{buildroot}%{_bindir}/gif-picker
 test -x %{buildroot}%{_bindir}/gif-control
 test -f %{buildroot}%{_libexecdir}/gif-player/gif-script.py
 test ! -e %{buildroot}%{_libexecdir}/gif-player/Gifs
-! find %{buildroot} -type f -print0 | xargs -0 grep -l '/home/\|~/Scripts/Gif-Overlay' >/dev/null
+! grep -R -E '/usr/bin/python3|~/Scripts/Gif-Overlay' \
+  %{buildroot}%{_bindir} %{buildroot}%{_libexecdir}/gif-player/*.py
 
 %files -f %{pyproject_files}
 %{_bindir}/gif-player
