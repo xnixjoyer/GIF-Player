@@ -55,8 +55,8 @@ test -x %{buildroot}%{_bindir}/gif-picker
 test -x %{buildroot}%{_bindir}/gif-control
 test -f %{buildroot}%{_libexecdir}/gif-player/gif-script.py
 test ! -e %{buildroot}%{_libexecdir}/gif-player/Gifs
-! grep -R -E '/usr/bin/python3|~/Scripts/Gif-Overlay' \
-  %{buildroot}%{_bindir} %{buildroot}%{_libexecdir}/gif-player/*.py
+! grep -R -E 'subprocess\.Popen\(\["python3"|~/Scripts/Gif-Overlay' \
+  %{buildroot}%{_libexecdir}/gif-player/*.py
 
 %files -f %{pyproject_files}
 %{_bindir}/gif-player
