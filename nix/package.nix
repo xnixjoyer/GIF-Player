@@ -71,7 +71,12 @@ python3Packages.buildPythonApplication {
       "$out/share/fish/vendor_functions.d" "$out/share/fish/vendor_completions.d"
 
     install -m755 gif-script.py gif-picker.py gif-control.py "$libexec/"
-    install -m644 gif_player_paths.py gif_player_ipc.py gif_player_bootstrap.py "$libexec/"
+    install -m644 \
+      gif_player_paths.py \
+      gif_player_ipc.py \
+      gif_player_runtime.py \
+      gif_player_bootstrap.py \
+      "$libexec/"
     install -m755 gif_player_cli.py gif_picker_entry.py gif_control_entry.py "$libexec/"
 
     for spec in \
