@@ -345,11 +345,16 @@ open a real Wayland window.
 For implementation details, see [ARCHITECTURE.md](ARCHITECTURE.md) and the
 [player pipeline analysis](docs/PLAYER_PIPELINE_ANALYSIS.md).
 
-## License
+## Copyright and project independence
 
-GIF Player is independently written software licensed under the
-[GNU General Public License v3.0 or later](LICENSE).
+GIF Player is an independently developed implementation. It is not a fork of,
+affiliated with, sponsored by, or endorsed by any other project offering similar
+functionality. No source code, artwork, GIF files, anime media, or other
+project-specific assets from another project are included.
 
-The repository does not include GIFs, anime media or other third-party content.
-Files supplied by users remain subject to their respective copyrights and
-licenses.
+No open-source license or other general permission is currently granted for the
+source code in this repository. Default copyright law applies. See
+[NOTICE.md](NOTICE.md) for the complete project notice.
+
+User-supplied GIFs and other media remain subject to their respective copyrights
+and license terms.
