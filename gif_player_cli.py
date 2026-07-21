@@ -16,7 +16,7 @@ from gif_player_paths import AppPaths, get_paths
 
 KNOWN_COMMANDS = {
     "run", "ipc", "all", "list", "edit", "lock", "stop-all", "kill-all",
-    "picker", "control", "daemon", "self-test",
+    "picker", "control", "daemon", "self-test", "doctor",
 }
 
 
@@ -99,6 +99,7 @@ def _parser() -> argparse.ArgumentParser:
     sub.add_parser("control", help="Control-Panel öffnen")
     sub.add_parser("daemon", help="Supervisor-Daemon (intern/manuell)")
     sub.add_parser("self-test", help="XDG-Pfade und Runtime-Sicherheit prüfen")
+    sub.add_parser("doctor", help="Python-Abhängigkeiten und GTK-Typelibs prüfen")
     return parser
 
 
@@ -135,6 +136,27 @@ def _run_daemon(paths: AppPaths) -> int:
     except RuntimeError as exc:
         print(f"gif-player: {exc}", file=sys.stderr)
         return 2
+
+
+def _doctor(paths: AppPaths) -> int:
+    try:
+        import cairo  # noqa: F401
+        import gi
+        from PIL import Image  # noqa: F401
+
+        for namespace, version in (
+            ("Gtk", "3.0"),
+            ("Gdk", "3.0"),
+            ("GdkPixbuf", "2.0"),
+            ("GtkLayerShell", "0.1"),
+        ):
+            gi.require_version(namespace, version)
+        from gi.repository import Gdk, GdkPixbuf, Gtk, GtkLayerShell  # noqa: F401,E402
+    except Exception as exc:
+        print(f"gif-player doctor: {exc}", file=sys.stderr)
+        return 1
+    print("Python imports and GTK typelibs: OK")
+    return 0
 
 
 def _self_test(paths: AppPaths) -> int:
@@ -177,6 +199,8 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "self-test":
         return _self_test(paths)
+    if args.command == "doctor":
+        return _doctor(paths)
     if args.command == "daemon":
         return _run_daemon(paths)
     if args.command == "picker":
