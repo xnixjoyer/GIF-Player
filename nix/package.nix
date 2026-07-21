@@ -11,7 +11,7 @@
 
 python3Packages.buildPythonApplication {
   pname = "gif-player";
-  version = "0.1.0";
+  version = "0.3.0";
   pyproject = false;
 
   src = lib.cleanSource ../.;
@@ -68,7 +68,8 @@ python3Packages.buildPythonApplication {
 
     libexec="$out/libexec/gif-player"
     mkdir -p "$libexec" "$out/bin" "$out/share/applications" \
-      "$out/share/fish/vendor_functions.d" "$out/share/fish/vendor_completions.d"
+      "$out/share/fish/vendor_functions.d" "$out/share/fish/vendor_completions.d" \
+      "$out/share/licenses/gif-player"
 
     install -m755 gif-script.py gif-picker.py gif-control.py "$libexec/"
     install -m644 \
@@ -100,6 +101,7 @@ python3Packages.buildPythonApplication {
     install -m644 completions/gif-player.fish \
       "$out/share/fish/vendor_completions.d/gif-player.fish"
     install -m644 data/*.desktop "$out/share/applications/"
+    install -m644 LICENSE "$out/share/licenses/gif-player/LICENSE"
 
     runHook postInstall
   '';
@@ -129,6 +131,7 @@ python3Packages.buildPythonApplication {
       "$out/bin" "$out/libexec/gif-player/gif_player"*.py
 
     test ! -e "$out/libexec/gif-player/Gifs"
+    test -f "$out/share/licenses/gif-player/LICENSE"
     wayland_error="$(env -u WAYLAND_DISPLAY "$out/bin/gif-player" picker 2>&1 || true)"
     printf '%s\n' "$wayland_error" | grep -q 'WAYLAND_DISPLAY ist nicht gesetzt'
     find "$out" -type f -exec sha256sum {} + | sort > "$TMPDIR/out-after"
@@ -139,6 +142,7 @@ python3Packages.buildPythonApplication {
   meta = {
     description = "GTK3 layer-shell GIF overlay supervisor for Wayland";
     homepage = "https://github.com/xnixjoyer/GIF-Player";
+    license = lib.licenses.gpl3Plus;
     mainProgram = "gif-player";
     platforms = lib.platforms.linux;
   };
